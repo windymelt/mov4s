@@ -1,5 +1,7 @@
 package dev.capslock.mov4s
 
+import scala.concurrent.duration.FiniteDuration
+
 object FFMpeg {
   val integrityAlg = "SHA-256"
   val outputDir    = os.pwd / "output"
@@ -68,5 +70,84 @@ object FFMpeg {
       .call(stdout = os.Inherit, stderr = os.Inherit, stdin = os.Inherit)
 
     MovieFile(renameWithIntegrity(tempOutput))
+  }
+
+  def cut(
+      file: MovieFile,
+      start: FiniteDuration,
+      end: FiniteDuration,
+      draft: Boolean = false,
+  ): MovieFile = {
+    ensureOutputDir()
+
+    val tempOutput = os.temp(suffix = ".mkv")
+    val draftFragment =
+      if (draft)
+        List(
+          "-tune",
+          "zerolatency",
+          "-deadline",
+          "good",
+          "-cpu-used",
+          "5",
+          "-row-mt",
+          "1",
+        )
+      else List()
+    val params = List(
+      "-y",
+      "-ss",
+      formatFiniteDuration(start),
+      "-to",
+      formatFiniteDuration(end),
+      "-i",
+      file.path.toString(),
+      "-c:v",
+      "vp9",
+    ) ++ draftFragment ++ List(
+      tempOutput.toString,
+    )
+
+    os.proc("ffmpeg", params)
+      .call(stdout = os.Inherit, stderr = os.Inherit, stdin = os.Inherit)
+
+    MovieFile(renameWithIntegrity(tempOutput))
+  }
+  def cutNoEncoding(
+      file: MovieFile,
+      start: FiniteDuration,
+      end: FiniteDuration,
+  ): MovieFile = {
+    ensureOutputDir()
+
+    val tempOutput = os.temp(suffix = ".mkv")
+    val params = List(
+      "-y",
+      "-ss",
+      formatFiniteDuration(start),
+      "-i",
+      file.path.toString(),
+      "-to",
+      formatFiniteDuration(end),
+      "-c",
+      "copy",
+      tempOutput.toString,
+    )
+
+    os.proc("ffmpeg", params)
+      .call(stdout = os.Inherit, stderr = os.Inherit, stdin = os.Inherit)
+
+    MovieFile(renameWithIntegrity(tempOutput))
+  }
+
+  private def formatFiniteDuration(duration: FiniteDuration): String = {
+    val totalMilliseconds = duration.toMillis
+
+    val hours   = totalMilliseconds / 3600000
+    val minutes = (totalMilliseconds % 3600000) / 60000
+    val seconds = (totalMilliseconds % 60000) / 1000
+    val millis  = totalMilliseconds  % 1000
+
+    f"$hours%02d:$minutes%02d:$seconds%02d.$millis%03d"
   }
 }
