@@ -79,8 +79,8 @@ object FFMpeg {
 
   def cut(
       file: MovieFile,
-      start: FiniteDuration,
-      end: FiniteDuration,
+      start: Option[FiniteDuration],
+      end: Option[FiniteDuration],
       draft: Boolean = false,
   ): MovieFile = {
     ensureOutputDir()
@@ -99,12 +99,18 @@ object FFMpeg {
           "1",
         )
       else List()
+
+    val startFragment = start match {
+      case Some(s) => List("-ss", formatFiniteDuration(s))
+      case None    => List()
+    }
+    val endFragment = end match {
+      case Some(e) => List("-to", formatFiniteDuration(e))
+      case None    => List()
+    }
     val params = List(
       "-y",
-      "-ss",
-      formatFiniteDuration(start),
-      "-to",
-      formatFiniteDuration(end),
+    ) ++ startFragment ++ endFragment ++ List(
       "-i",
       file.path.toString(),
       "-c:v",

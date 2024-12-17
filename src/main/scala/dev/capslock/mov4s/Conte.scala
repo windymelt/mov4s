@@ -4,7 +4,8 @@ import scala.concurrent.duration.FiniteDuration
 
 final case class Conte(
     moviePath: Seq[Conte | MovieFile],
-    integrity: Seq[Integrity],
+    integrities: Seq[Option[Integrity]],
+    integrity: Option[Integrity] = None,
     de: Option[FiniteDuration] = None,
     a: Option[FiniteDuration] = None,
     orders: Seq[Order] = Seq.empty,
