@@ -10,13 +10,16 @@ object FFMpeg {
       os.makeDir.all(outputDir)
     }
   }
-  private def renameWithIntegrity(file: os.Path): os.Path = {
+  private def renameWithIntegrity(file: os.Path): (os.Path, Integrity) = {
     val digest    = java.security.MessageDigest.getInstance(integrityAlg)
     val hashBytes = digest.digest(os.read.bytes(file))
     val hash      = hashBytes.map("%02x".format(_)).mkString
     os.move(file, outputDir / s"$hash.mkv")
 
-    outputDir / s"$hash.mkv"
+    val path      = outputDir / s"$hash.mkv"
+    val integrity = Integrity(hash, integrityAlg)
+
+    (path, integrity)
   }
   def concatReencoding(files: MovieFile*): MovieFile = {
     ensureOutputDir()
@@ -42,7 +45,8 @@ object FFMpeg {
     os.proc("ffmpeg", params)
       .call(stdout = os.Inherit, stderr = os.Inherit, stdin = os.Inherit)
 
-    MovieFile(renameWithIntegrity(tempOutput))
+    val (path, integrity) = renameWithIntegrity(tempOutput)
+    MovieFile(path)
   }
 
   def concatNoEncoding(files: MovieFile*): MovieFile = {
@@ -69,7 +73,8 @@ object FFMpeg {
     os.proc("ffmpeg", params)
       .call(stdout = os.Inherit, stderr = os.Inherit, stdin = os.Inherit)
 
-    MovieFile(renameWithIntegrity(tempOutput))
+    val (path, integrity) = renameWithIntegrity(tempOutput)
+    MovieFile(path)
   }
 
   def cut(
@@ -111,7 +116,8 @@ object FFMpeg {
     os.proc("ffmpeg", params)
       .call(stdout = os.Inherit, stderr = os.Inherit, stdin = os.Inherit)
 
-    MovieFile(renameWithIntegrity(tempOutput))
+    val (path, integrity) = renameWithIntegrity(tempOutput)
+    MovieFile(path)
   }
   def cutNoEncoding(
       file: MovieFile,
@@ -137,7 +143,8 @@ object FFMpeg {
     os.proc("ffmpeg", params)
       .call(stdout = os.Inherit, stderr = os.Inherit, stdin = os.Inherit)
 
-    MovieFile(renameWithIntegrity(tempOutput))
+    val (path, integrity) = renameWithIntegrity(tempOutput)
+    MovieFile(path)
   }
 
   private def formatFiniteDuration(duration: FiniteDuration): String = {
